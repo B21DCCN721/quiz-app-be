@@ -1,0 +1,28 @@
+1.login
+{
+    "password": "abc123",
+    "email": "test@gmail.com"
+}
+2.register
+{
+    "name": "b21dccn721",
+    "password": "123456",
+    "email": "giaovien@gmail.com",
+    "role": "teacher",
+    "grade":"1" // cua hoc sinh
+}
+3.đổi mật khẩu
+{
+  "oldPassword": "123456",
+  "newPassword": "abc123"
+}
+4.update profile
+{
+  "name": "hehe",
+  "grade": 5 , // Optional, only for students
+  "avatar": "data:image/jpeg;base64,/9j/4AAQSkZJRg..."
+}
+5.lấy bài thi không có query thì lấy hết; mỗi query tương ứng với 1 điều kiện; search theo title hoặc description
+?type=1&grade=1&id=1&search=General
+6.lấy chi tiết bài thi theo id
+api/exercises/:id?type=1
