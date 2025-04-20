@@ -1,8 +1,9 @@
 const { DataTypes } = require('sequelize');
 const { sequelize } = require('../configs/connectDB');
 const Submission = require('./submission.model');
+const MultipleChoiceQuestion = require('./multipleChoiceQuestion.model'); 
 
-const StudentAnswer = sequelize.define('StudentAnswer', {
+const StudentAnswerMultipleChoice = sequelize.define('StudentAnswerMultipleChoice', {
   id: {
     type: DataTypes.INTEGER,
     autoIncrement: true,
@@ -12,7 +13,7 @@ const StudentAnswer = sequelize.define('StudentAnswer', {
     type: DataTypes.INTEGER,
     allowNull: false,
     references: {
-      model: Submission, // tên bảng trong cơ sở dữ liệu
+      model: Submission, 
       key: 'id'
     },
     onDelete: 'CASCADE'
@@ -21,7 +22,7 @@ const StudentAnswer = sequelize.define('StudentAnswer', {
     type: DataTypes.INTEGER,
     allowNull: false,
     references: {
-      model: 'MultipleChoiceQuestion', // tên bảng trong cơ sở dữ liệu
+      model: MultipleChoiceQuestion, 
       key: 'id'
     },
     onDelete: 'CASCADE'
@@ -31,8 +32,8 @@ const StudentAnswer = sequelize.define('StudentAnswer', {
     allowNull: false
   }
 }, {
-  tableName: 'student_answers',
+  tableName: 'student_answers_multiple_choice',
   timestamps: false
 });
 
-module.exports = StudentAnswer;
+module.exports = StudentAnswerMultipleChoice;

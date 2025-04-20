@@ -26,3 +26,13 @@
 ?type=1&grade=1&id=1&search=General
 6.lấy chi tiết bài thi theo id
 api/exercises/:id?type=1
+7. send otp
+{
+  "email": "covocuc01@gmail.com"
+}
+8. check otp
+{
+  "email": "covocuc01@gmail.com",
+  "otp": "863432",  // Mã OTP nhận được
+  "newPassword": "metvailoz"
+}

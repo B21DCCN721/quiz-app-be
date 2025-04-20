@@ -7,6 +7,8 @@
 - http://localhost:5000/api/exercises?type=1
 - http://localhost:5000/api/exercises/1?type=1
 - http://localhost:5000/api/student/rankings
+- http://localhost:5000/api/auth/forgot-password
+- http://localhost:5000/api/auth/verify-otp
 ### tạo file .env chứa các biến môi trường
 # app
 - PORT = 5000

@@ -1,7 +1,11 @@
+require("dotenv").config();
 const { User, Student } = require("../models");
 const bcrypt = require("bcryptjs");
 const jwt = require("jsonwebtoken");
-require("dotenv").config();
+const generateOTP = require("../helpers/generateOTP");
+const { sendOTPEmail } = require("../services/googleAuth.service");
+// Store OTP temporarily (in production, use Redis or similar)
+const otpStore = new Map();
 
 // Register controller for both student and teacher
 const register = async (req, res) => {
@@ -66,7 +70,7 @@ const login = async (req, res) => {
     if (!user) {
       return res
         .status(400)
-        .json({ message: "Email hoặc mật khẩu không đúng" });
+        .json({ message: "Email không đúng" });
     }
 
     // Compare password
@@ -74,7 +78,7 @@ const login = async (req, res) => {
     if (!isValidPassword) {
       return res
         .status(400)
-        .json({ message: "Email hoặc mật khẩu không đúng" });
+        .json({ message: "Mật khẩu không đúng" });
     }
 
     // Create JWT token
@@ -108,7 +112,6 @@ const login = async (req, res) => {
     res.status(500).json({ message: "Lỗi server", error: error.message });
   }
 };
-
 const changePassword = async (req, res) => {
   try {
     const { oldPassword, newPassword } = req.body;
@@ -127,6 +130,16 @@ const changePassword = async (req, res) => {
     );
     if (!isValidPassword) {
       return res.status(400).json({ message: "Mật khẩu cũ không đúng" });
+    }
+    // Check if new password is same as old password
+    const isSamePassword = await bcrypt.compare(
+      newPassword,
+      user.password_hash
+    );
+    if (isSamePassword) {
+      return res
+        .status(400)
+        .json({ message: "Mật khẩu mới không được giống mật khẩu cũ" });
     }
 
     // Hash new password
@@ -243,58 +256,6 @@ const updateProfile = async (req, res) => {
     });
   } catch (error) {
     res.status(500).json({ message: "Lỗi server", error: error.message });
-  }
-};
-const nodemailer = require("nodemailer");
-const { OAuth2Client } = require("google-auth-library");
-
-// Add these new functions to your existing auth.controller.js
-const generateOTP = () => {
-  return Math.floor(100000 + Math.random() * 900000).toString();
-};
-
-// Store OTP temporarily (in production, use Redis or similar)
-const otpStore = new Map();
-
-const sendOTPEmail = async (email, otp) => {
-  try {
-    const oauth2Client = new OAuth2Client(
-      process.env.GOOGLE_CLIENT_ID,
-      process.env.GOOGLE_CLIENT_SECRET,
-      'https://developers.google.com/oauthplayground'
-    );
-
-    oauth2Client.setCredentials({
-      refresh_token: process.env.GOOGLE_REFRESH_TOKEN
-    });
-
-    const { token } = await oauth2Client.getAccessToken(); // Thay đổi này
-
-    const transporter = nodemailer.createTransport({
-      service: 'gmail',
-      auth: {
-        type: 'OAuth2',
-        user: process.env.EMAIL_FROM,
-        clientId: process.env.GOOGLE_CLIENT_ID,
-        clientSecret: process.env.GOOGLE_CLIENT_SECRET,
-        refreshToken: process.env.GOOGLE_REFRESH_TOKEN,
-        accessToken: token // Sử dụng token thay vì accessToken
-      }
-    });
-
-    await transporter.sendMail({
-      from: process.env.EMAIL_FROM,
-      to: email,
-      subject: 'Mã OTP đặt lại mật khẩu',
-      html: `
-        <h1>Đặt lại mật khẩu</h1>
-        <p>Mã OTP của bạn là: <strong>${otp}</strong></p>
-        <p>Mã có hiệu lực trong 5 phút.</p>
-      `
-    });
-  } catch (error) {
-    console.error('Error sending email:', error);
-    throw error;
   }
 };
 
