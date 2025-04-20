@@ -1,4 +1,13 @@
-const { User, Student } = require("../models");
+const {
+  User,
+  Student,
+  Exercise,
+  MultipleChoiceQuestion,
+  MultipleChoiceAnswer,
+  Submission,
+  StudentAnswerMultipleChoice,
+} = require("../models");
+const { sequelize } = require("../configs/connectDB");
 
 const getStudentRankings = async (req, res) => {
   try {
@@ -6,20 +15,22 @@ const getStudentRankings = async (req, res) => {
 
     const students = await User.findAll({
       where: {
-        role: 'student'
+        role: "student",
       },
-      include: [{
-        model: Student,
-        where: {
-          grade: userGrade // Filter by same grade
+      include: [
+        {
+          model: Student,
+          where: {
+            grade: userGrade, // Filter by same grade
+          },
+          required: true,
         },
-        required: true
-      }],
-      attributes: ['id', 'name', 'email'],
+      ],
+      attributes: ["id", "name", "email"],
       order: [
-        [Student, 'score', 'DESC'], // Sort by score descending
-        ['name', 'ASC'] // If scores are equal, sort by name ascending
-      ]
+        [Student, "score", "DESC"], // Sort by score descending
+        ["name", "ASC"], // If scores are equal, sort by name ascending
+      ],
     });
 
     // Map the results to include ranking
@@ -28,14 +39,151 @@ const getStudentRankings = async (req, res) => {
       id: user.id,
       name: user.name,
       email: user.email,
-      score: user.Student.score
+      score: user.Student.score,
     }));
 
     res.json({
       message: "Lấy danh sách xếp hạng thành công",
-      rankings
+      rankings,
     });
   } catch (error) {
+    res.status(500).json({
+      message: "Lỗi server",
+      error: error.message,
+    });
+  }
+};
+const submitMultipleChoiceExercise = async (req, res) => {
+  const transaction = await sequelize.transaction();
+
+  try {
+    const { exerciseId, answers } = req.body;
+    const studentId = req.user.id;
+
+    // Verify exercise exists and is multiple choice type
+    const exercise = await Exercise.findOne({
+      where: {
+        id: exerciseId,
+        exercise_type: 1
+      },
+      include: [{
+        model: MultipleChoiceQuestion,
+        include: [{
+          model: MultipleChoiceAnswer,
+          where: { is_correct: true }
+        }]
+      }]
+    });
+
+    if (!exercise) {
+      return res.status(404).json({ message: "Không tìm thấy bài kiểm tra" });
+    }
+
+    // Get previous submissions for this exercise
+    const previousSubmissions = await Submission.findAll({
+      where: {
+        student_id: studentId,
+        exercise_id: exerciseId
+      },
+      include: [{
+        model: StudentAnswerMultipleChoice,
+        include: [{
+          model: MultipleChoiceQuestion,
+          include: [{
+            model: MultipleChoiceAnswer,
+            where: { is_correct: true }
+          }]
+        }]
+      }]
+    });
+
+    // Track previously correct answers
+    const previouslyCorrectQuestionIds = new Set();
+    previousSubmissions.forEach(submission => {
+      submission.StudentAnswerMultipleChoices.forEach(answer => {
+        if (answer.selected_answer === answer.MultipleChoiceQuestion.MultipleChoiceAnswers[0].id.toString()) {
+          previouslyCorrectQuestionIds.add(answer.question_id);
+        }
+      });
+    });
+
+    // Calculate score
+    let correctAnswers = 0;
+    let newCorrectAnswers = 0;
+    const totalQuestions = exercise.MultipleChoiceQuestions.length;
+
+    if (totalQuestions === 0) {
+      return res.status(400).json({ message: "Bài kiểm tra không có câu hỏi" });
+    }
+
+    // Create submission record
+    const submission = await Submission.create({
+      student_id: studentId,
+      exercise_id: exerciseId,
+      submitted_at: new Date()
+    }, { transaction });
+
+    // Process each answer
+    for (const answer of answers) {
+      const question = exercise.MultipleChoiceQuestions.find(q => q.id === answer.questionId);
+      
+      if (question) {
+        // Save student's answer
+        await StudentAnswerMultipleChoice.create({
+          submission_id: submission.id,
+          question_id: answer.questionId,
+          selected_answer: answer.selectedAnswer // Now storing answer ID
+        }, { transaction });
+
+        // Check if answer is correct
+        const correctAnswer = question.MultipleChoiceAnswers[0];
+        const isCorrect = correctAnswer && answer.selectedAnswer === correctAnswer.id.toString();
+        
+        if (isCorrect) {
+          correctAnswers++;
+          // Only count for new score if not previously correct
+          if (!previouslyCorrectQuestionIds.has(answer.questionId)) {
+            newCorrectAnswers++;
+            previouslyCorrectQuestionIds.add(answer.questionId);
+          }
+        }
+      }
+    }
+
+    // Calculate submission score (scale to 100)
+    const submissionScore = Math.round((correctAnswers / totalQuestions) * 100);
+    
+    // Calculate points to add to total score
+    const pointsToAdd = Math.round((newCorrectAnswers / totalQuestions) * 100);
+
+    // Update submission score
+    await submission.update({ score: submissionScore }, { transaction });
+
+    // Update student's total score only for new correct answers
+    const student = await Student.findOne({
+      where: { user_id: studentId }
+    });
+
+    await student.update({
+      score: student.score + pointsToAdd
+    }, { transaction });
+
+    await transaction.commit();
+
+    res.json({
+      message: "Nộp bài thành công",
+      result: {
+        totalQuestions,
+        correctAnswers,
+        newCorrectAnswers,
+        submissionScore,
+        pointsAdded: pointsToAdd,
+        newStudentScore: student.score
+      }
+    });
+
+  } catch (error) {
+    await transaction.rollback();
     res.status(500).json({
       message: "Lỗi server",
       error: error.message
@@ -44,5 +192,6 @@ const getStudentRankings = async (req, res) => {
 };
 
 module.exports = {
-  getStudentRankings
+  getStudentRankings,
+  submitMultipleChoiceExercise
 };

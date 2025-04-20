@@ -36,3 +36,17 @@ api/exercises/:id?type=1
   "otp": "863432",  // Mã OTP nhận được
   "newPassword": "metvailoz"
 }
+9.Nộp bài thi multiple
+{
+  "exerciseId": 1,
+  "answers": [
+    {
+      "questionId": 1,
+      "selectedAnswer": "2" 
+    },
+    {
+      "questionId": 2,
+      "selectedAnswer": "5" 
+    }
+  ]
+}
