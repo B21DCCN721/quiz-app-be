@@ -92,7 +92,7 @@ CREATE TABLE student_answers_multiple_choice (
                                  id INT AUTO_INCREMENT PRIMARY KEY,
                                  submission_id INT NOT NULL,
                                  question_id INT NOT NULL,
-                                 selected_answer TEXT NOT NULL,
+                                 selected_answer int NOT NULL,
                                  FOREIGN KEY (submission_id) REFERENCES submissions(id) ON DELETE CASCADE,
                                  FOREIGN KEY (question_id) REFERENCES multiple_choice_questions(id) ON DELETE CASCADE
 );
@@ -385,37 +385,3 @@ INSERT INTO color_answers (question_id, correct_position) VALUES
                                                               (@q2, 4),
                                                               (@q3, 9);
 
--- Insert submissions
-INSERT INTO submissions (student_id, exercise_id, score) VALUES
-                                                             ((SELECT user_id FROM students WHERE user_id = (SELECT id FROM users WHERE email = 'student1@example.com')), 1, 8),
-                                                             ((SELECT user_id FROM students WHERE user_id = (SELECT id FROM users WHERE email = 'student2@example.com')), 1, 7),
-                                                             ((SELECT user_id FROM students WHERE user_id = (SELECT id FROM users WHERE email = 'student3@example.com')), 1, 9);
-
--- Get submission IDs
-SET @sub1 = (SELECT id FROM submissions WHERE student_id = (SELECT user_id FROM students WHERE user_id = (SELECT id FROM users WHERE email = 'student1@example.com')) ORDER BY submitted_at DESC LIMIT 1);
-SET @sub2 = (SELECT id FROM submissions WHERE student_id = (SELECT user_id FROM students WHERE user_id = (SELECT id FROM users WHERE email = 'student2@example.com')) ORDER BY submitted_at DESC LIMIT 1);
-SET @sub3 = (SELECT id FROM submissions WHERE student_id = (SELECT user_id FROM students WHERE user_id = (SELECT id FROM users WHERE email = 'student3@example.com')) ORDER BY submitted_at DESC LIMIT 1);
-
--- Insert student answers
-INSERT INTO student_answers_multiple_choice (submission_id, question_id, selected_answer) VALUES
-                                                                              (@sub1, (SELECT id FROM multiple_choice_questions WHERE exercise_id = 1 and question = 'Thủ đô của Pháp là gì?'), 'Paris'),
-                                                                              (@sub1, (SELECT id FROM multiple_choice_questions WHERE exercise_id = 1 and question = '2 + 2 bằng mấy?'), '4'),
-                                                                              (@sub1, (SELECT id FROM multiple_choice_questions WHERE exercise_id = 1 and question = 'Nguyên tố hóa học có ký hiệu O là gì?'), 'Oxygen'),
-                                                                              (@sub1, (SELECT id FROM multiple_choice_questions WHERE exercise_id = 1 and question = 'Ai viết tác phẩm "Truyện Kiều"?'), 'Nguyễn Du'),
-                                                                              (@sub1, (SELECT id FROM multiple_choice_questions WHERE exercise_id = 1 and question = 'Nước nào có diện tích lớn nhất thế giới?'), 'Nga'),
-                                                                              (@sub1, (SELECT id FROM multiple_choice_questions WHERE exercise_id = 1 and question = 'Hệ điều hành nào được sử dụng phổ biến trên điện thoại?'), 'Android'),
-                                                                              (@sub1, (SELECT id FROM multiple_choice_questions WHERE exercise_id = 1 and question = 'Tốc độ ánh sáng xấp xỉ bao nhiêu km/s?'), '300,000 km/s'),
-                                                                              (@sub1, (SELECT id FROM multiple_choice_questions WHERE exercise_id = 1 and question = 'Đâu là một ngôn ngữ lập trình?'), 'Java'),
-                                                                              (@sub1, (SELECT id FROM multiple_choice_questions WHERE exercise_id = 1 and question = 'Trái Đất quay quanh gì?'), 'Mặt Trời'),
-                                                                              (@sub1, (SELECT id FROM multiple_choice_questions WHERE exercise_id = 1 and question = 'Nước nào có dân số đông nhất thế giới?'), 'Trung Quốc'),
-
-                                                                              (@sub2, (SELECT id FROM multiple_choice_questions WHERE exercise_id = 1 and question = 'Thủ đô của Pháp là gì?'), 'Paris'),
-                                                                              (@sub2, (SELECT id FROM multiple_choice_questions WHERE exercise_id = 1 and question = '2 + 2 bằng mấy?'), '5'),
-                                                                              (@sub2, (SELECT id FROM multiple_choice_questions WHERE exercise_id = 1 and question = 'Nguyên tố hóa học có ký hiệu O là gì?'), 'Oxygen'),
-                                                                              (@sub2, (SELECT id FROM multiple_choice_questions WHERE exercise_id = 1 and question = 'Ai viết tác phẩm "Truyện Kiều"?'), 'Nguyễn Du'),
-                                                                              (@sub2, (SELECT id FROM multiple_choice_questions WHERE exercise_id = 1 and question = 'Nước nào có diện tích lớn nhất thế giới?'), 'Nga'),
-                                                                              (@sub2, (SELECT id FROM multiple_choice_questions WHERE exercise_id = 1 and question = 'Hệ điều hành nào được sử dụng phổ biến trên điện thoại?'), 'Windows'),
-                                                                              (@sub2, (SELECT id FROM multiple_choice_questions WHERE exercise_id = 1 and question = 'Tốc độ ánh sáng xấp xỉ bao nhiêu km/s?'), '150,000 km/s'),
-                                                                              (@sub2, (SELECT id FROM multiple_choice_questions WHERE exercise_id = 1 and question = 'Đâu là một ngôn ngữ lập trình?'), 'HTML'),
-                                                                              (@sub2, (SELECT id FROM multiple_choice_questions WHERE exercise_id = 1 and question = 'Trái Đất quay quanh gì?'), 'Mặt Trăng'),
-                                                                              (@sub2, (SELECT id FROM multiple_choice_questions WHERE exercise_id = 1 and question = 'Nước nào có dân số đông nhất thế giới?'), 'Ấn Độ');

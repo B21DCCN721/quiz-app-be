@@ -28,7 +28,7 @@ const StudentAnswerMultipleChoice = sequelize.define('StudentAnswerMultipleChoic
     onDelete: 'CASCADE'
   },
   selected_answer: {
-    type: DataTypes.TEXT,
+    type: DataTypes.INTEGER,
     allowNull: false
   }
 }, {

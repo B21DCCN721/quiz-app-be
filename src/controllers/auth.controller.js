@@ -287,11 +287,11 @@ const updateProfile = async (req, res) => {
         email: updatedUser.email,
         name: updatedUser.name,
         role: updatedUser.role,
-        avatar: updatedUser.avatar,
         ...(updatedUser.Student && {
           grade: updatedUser.Student.grade,
           score: updatedUser.Student.score,
         }),
+        avatar: updatedUser.avatar,
       },
     });
   } catch (error) {
