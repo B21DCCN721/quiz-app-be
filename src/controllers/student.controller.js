@@ -43,11 +43,13 @@ const getStudentRankings = async (req, res) => {
     }));
 
     res.json({
+      code: 1,
       message: "Lấy danh sách xếp hạng thành công",
       rankings,
     });
   } catch (error) {
     res.status(500).json({
+      code: 0,
       message: "Lỗi server",
       error: error.message,
     });
@@ -64,44 +66,60 @@ const submitMultipleChoiceExercise = async (req, res) => {
     const exercise = await Exercise.findOne({
       where: {
         id: exerciseId,
-        exercise_type: 1
+        exercise_type: 1,
       },
-      include: [{
-        model: MultipleChoiceQuestion,
-        include: [{
-          model: MultipleChoiceAnswer,
-          where: { is_correct: true }
-        }]
-      }]
+      include: [
+        {
+          model: MultipleChoiceQuestion,
+          include: [
+            {
+              model: MultipleChoiceAnswer,
+              where: { is_correct: true },
+            },
+          ],
+        },
+      ],
     });
 
     if (!exercise) {
-      return res.status(404).json({ message: "Không tìm thấy bài kiểm tra" });
+      return res.status(404).json({
+        code: 0,
+        message: "Không tìm thấy bài kiểm tra",
+      });
     }
 
     // Get previous submissions for this exercise
     const previousSubmissions = await Submission.findAll({
       where: {
         student_id: studentId,
-        exercise_id: exerciseId
+        exercise_id: exerciseId,
       },
-      include: [{
-        model: StudentAnswerMultipleChoice,
-        include: [{
-          model: MultipleChoiceQuestion,
-          include: [{
-            model: MultipleChoiceAnswer,
-            where: { is_correct: true }
-          }]
-        }]
-      }]
+      include: [
+        {
+          model: StudentAnswerMultipleChoice,
+          include: [
+            {
+              model: MultipleChoiceQuestion,
+              include: [
+                {
+                  model: MultipleChoiceAnswer,
+                  where: { is_correct: true },
+                },
+              ],
+            },
+          ],
+        },
+      ],
     });
 
     // Track previously correct answers
     const previouslyCorrectQuestionIds = new Set();
-    previousSubmissions.forEach(submission => {
-      submission.StudentAnswerMultipleChoices.forEach(answer => {
-        if (answer.selected_answer === answer.MultipleChoiceQuestion.MultipleChoiceAnswers[0].id.toString()) {
+    previousSubmissions.forEach((submission) => {
+      submission.StudentAnswerMultipleChoices.forEach((answer) => {
+        if (
+          answer.selected_answer ===
+          answer.MultipleChoiceQuestion.MultipleChoiceAnswers[0].id.toString()
+        ) {
           previouslyCorrectQuestionIds.add(answer.question_id);
         }
       });
@@ -113,32 +131,45 @@ const submitMultipleChoiceExercise = async (req, res) => {
     const totalQuestions = exercise.MultipleChoiceQuestions.length;
 
     if (totalQuestions === 0) {
-      return res.status(400).json({ message: "Bài kiểm tra không có câu hỏi" });
+      return res.status(400).json({
+        code: 0,
+        message: "Bài kiểm tra không có câu hỏi",
+      });
     }
 
     // Create submission record
-    const submission = await Submission.create({
-      student_id: studentId,
-      exercise_id: exerciseId,
-      submitted_at: new Date()
-    }, { transaction });
+    const submission = await Submission.create(
+      {
+        student_id: studentId,
+        exercise_id: exerciseId,
+        submitted_at: new Date(),
+      },
+      { transaction }
+    );
 
     // Process each answer
     for (const answer of answers) {
-      const question = exercise.MultipleChoiceQuestions.find(q => q.id === answer.questionId);
-      
+      const question = exercise.MultipleChoiceQuestions.find(
+        (q) => q.id === answer.questionId
+      );
+
       if (question) {
         // Save student's answer
-        await StudentAnswerMultipleChoice.create({
-          submission_id: submission.id,
-          question_id: answer.questionId,
-          selected_answer: answer.selectedAnswer // Now storing answer ID
-        }, { transaction });
+        await StudentAnswerMultipleChoice.create(
+          {
+            submission_id: submission.id,
+            question_id: answer.questionId,
+            selected_answer: answer.selectedAnswer, // Now storing answer ID
+          },
+          { transaction }
+        );
 
         // Check if answer is correct
         const correctAnswer = question.MultipleChoiceAnswers[0];
-        const isCorrect = correctAnswer && answer.selectedAnswer === correctAnswer.id.toString();
-        
+        const isCorrect =
+          correctAnswer &&
+          answer.selectedAnswer === correctAnswer.id.toString();
+
         if (isCorrect) {
           correctAnswers++;
           // Only count for new score if not previously correct
@@ -152,7 +183,7 @@ const submitMultipleChoiceExercise = async (req, res) => {
 
     // Calculate submission score (scale to 100)
     const submissionScore = Math.round((correctAnswers / totalQuestions) * 100);
-    
+
     // Calculate points to add to total score
     const pointsToAdd = Math.round((newCorrectAnswers / totalQuestions) * 100);
 
@@ -161,16 +192,20 @@ const submitMultipleChoiceExercise = async (req, res) => {
 
     // Update student's total score only for new correct answers
     const student = await Student.findOne({
-      where: { user_id: studentId }
+      where: { user_id: studentId },
     });
 
-    await student.update({
-      score: student.score + pointsToAdd
-    }, { transaction });
+    await student.update(
+      {
+        score: student.score + pointsToAdd,
+      },
+      { transaction }
+    );
 
     await transaction.commit();
 
     res.json({
+      code: 1,
       message: "Nộp bài thành công",
       result: {
         totalQuestions,
@@ -178,20 +213,20 @@ const submitMultipleChoiceExercise = async (req, res) => {
         newCorrectAnswers,
         submissionScore,
         pointsAdded: pointsToAdd,
-        newStudentScore: student.score
-      }
+        newStudentScore: student.score,
+      },
     });
-
   } catch (error) {
     await transaction.rollback();
     res.status(500).json({
+      code: 0,
       message: "Lỗi server",
-      error: error.message
+      error: error.message,
     });
   }
 };
 
 module.exports = {
   getStudentRankings,
-  submitMultipleChoiceExercise
+  submitMultipleChoiceExercise,
 };

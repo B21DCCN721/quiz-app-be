@@ -8,7 +8,8 @@
 - http://localhost:5000/api/exercises/1?type=1
 - http://localhost:5000/api/student/rankings
 - http://localhost:5000/api/auth/forgot-password
-- http://localhost:5000/api/auth/verify-otp
+- http://localhost:5000/api/auth/reset-password
+- http://localhost:5000/api/student/submit/multiple-choice
 ### tạo file .env chứa các biến môi trường
 # app
 - PORT = 5000
@@ -22,3 +23,7 @@
 - DB_PASSWORD=123456
 - DB_NAME=btl_mad
 # gg
+- GOOGLE_CLIENT_ID
+- GOOGLE_CLIENT_SECRET
+- GOOGLE_REFRESH_TOKEN
+- EMAIL_FROM

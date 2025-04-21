@@ -5,7 +5,7 @@ const jwt = require("jsonwebtoken");
 const generateOTP = require("../helpers/generateOTP");
 const { sendOTPEmail } = require("../services/googleAuth.service");
 // Store OTP temporarily (in production, use Redis or similar)
-const otpStore = new Map();
+const otpStore = require("../helpers/otpStrore");
 
 // Register controller for both student and teacher
 const register = async (req, res) => {
@@ -15,7 +15,10 @@ const register = async (req, res) => {
     // Check if email exists
     const emailExists = await User.findOne({ where: { email } });
     if (emailExists) {
-      return res.status(400).json({ message: "Email đã tồn tại" });
+      return res.status(400).json({
+        code: 0,
+        message: "Email đã tồn tại",
+      });
     }
     // Hash password
     const hashedPassword = await bcrypt.hash(password, 10);
@@ -38,6 +41,7 @@ const register = async (req, res) => {
     }
 
     res.status(201).json({
+      code: 1,
       message: "Đăng ký thành công",
       user: {
         id: newUser.id,
@@ -47,10 +51,13 @@ const register = async (req, res) => {
       },
     });
   } catch (error) {
-    res.status(500).json({ message: "Lỗi server", error: error.message });
+    res.status(500).json({
+      code: 0,
+      message: "Lỗi server",
+      error: error.message,
+    });
   }
 };
-
 // Login controller
 const login = async (req, res) => {
   try {
@@ -68,17 +75,19 @@ const login = async (req, res) => {
     });
 
     if (!user) {
-      return res
-        .status(400)
-        .json({ message: "Email không đúng" });
+      return res.status(400).json({
+        code: 0,
+        message: "Email không đúng",
+      });
     }
 
     // Compare password
     const isValidPassword = await bcrypt.compare(password, user.password_hash);
     if (!isValidPassword) {
-      return res
-        .status(400)
-        .json({ message: "Mật khẩu không đúng" });
+      return res.status(400).json({
+        code: 0,
+        message: "Mật khẩu không đúng",
+      });
     }
 
     // Create JWT token
@@ -94,6 +103,7 @@ const login = async (req, res) => {
     );
 
     res.json({
+      code: 1,
       message: "Đăng nhập thành công",
       user: {
         id: user.id,
@@ -109,7 +119,11 @@ const login = async (req, res) => {
       token,
     });
   } catch (error) {
-    res.status(500).json({ message: "Lỗi server", error: error.message });
+    res.status(500).json({
+      code: 0,
+      message: "Lỗi server",
+      error: error.message,
+    });
   }
 };
 const changePassword = async (req, res) => {
@@ -120,7 +134,10 @@ const changePassword = async (req, res) => {
     // Find user
     const user = await User.findByPk(userId);
     if (!user) {
-      return res.status(404).json({ message: "Không tìm thấy người dùng" });
+      return res.status(404).json({
+        code: 0,
+        message: "Không tìm thấy người dùng",
+      });
     }
 
     // Verify old password
@@ -129,7 +146,10 @@ const changePassword = async (req, res) => {
       user.password_hash
     );
     if (!isValidPassword) {
-      return res.status(400).json({ message: "Mật khẩu cũ không đúng" });
+      return res.status(400).json({
+        code: 0,
+        message: "Mật khẩu cũ không đúng",
+      });
     }
     // Check if new password is same as old password
     const isSamePassword = await bcrypt.compare(
@@ -137,9 +157,10 @@ const changePassword = async (req, res) => {
       user.password_hash
     );
     if (isSamePassword) {
-      return res
-        .status(400)
-        .json({ message: "Mật khẩu mới không được giống mật khẩu cũ" });
+      return res.status(400).json({
+        code: 0,
+        message: "Mật khẩu mới không được giống mật khẩu cũ",
+      });
     }
 
     // Hash new password
@@ -148,9 +169,16 @@ const changePassword = async (req, res) => {
     // Update password
     await user.update({ password_hash: hashedNewPassword });
 
-    res.json({ message: "Đổi mật khẩu thành công" });
+    res.json({
+      code: 1,
+      message: "Đổi mật khẩu thành công",
+    });
   } catch (error) {
-    res.status(500).json({ message: "Lỗi server", error: error.message });
+    res.status(500).json({
+      code: 0,
+      message: "Lỗi server",
+      error: error.message,
+    });
   }
 };
 const getProfile = async (req, res) => {
@@ -169,10 +197,13 @@ const getProfile = async (req, res) => {
     });
 
     if (!user) {
-      return res.status(404).json({ message: "Không tìm thấy người dùng" });
+      return res
+        .status(404)
+        .json({ code: 0, message: "Không tìm thấy người dùng" });
     }
 
     res.json({
+      code: 1,
       message: "Lấy thông tin người dùng thành công",
       user: {
         id: user.id,
@@ -187,7 +218,11 @@ const getProfile = async (req, res) => {
       },
     });
   } catch (error) {
-    res.status(500).json({ message: "Lỗi server", error: error.message });
+    res.status(500).json({
+      code: 0,
+      message: "Lỗi server",
+      error: error.message,
+    });
   }
 };
 const updateProfile = async (req, res) => {
@@ -198,6 +233,7 @@ const updateProfile = async (req, res) => {
     // Validate base64 image string if provided
     if (avatar && !avatar.match(/^data:image\/(png|jpg|jpeg);base64,/)) {
       return res.status(400).json({
+        code: 0,
         message: "Avatar phải là ảnh định dạng base64 (PNG, JPG, JPEG)",
       });
     }
@@ -214,7 +250,10 @@ const updateProfile = async (req, res) => {
     });
 
     if (!user) {
-      return res.status(404).json({ message: "Không tìm thấy người dùng" });
+      return res.status(404).json({
+        code: 0,
+        message: "Không tìm thấy người dùng",
+      });
     }
 
     // Update user info
@@ -226,7 +265,7 @@ const updateProfile = async (req, res) => {
 
     // Update student grade if user is student
     if (user.role === "student" && grade) {
-      await user.Student.update({ grade });
+      await user.Student.update({ grade, score: 0 });
     }
 
     // Get updated user data
@@ -241,6 +280,7 @@ const updateProfile = async (req, res) => {
     });
 
     res.json({
+      code: 1,
       message: "Cập nhật thông tin thành công",
       user: {
         id: updatedUser.id,
@@ -255,7 +295,11 @@ const updateProfile = async (req, res) => {
       },
     });
   } catch (error) {
-    res.status(500).json({ message: "Lỗi server", error: error.message });
+    res.status(500).json({
+      code: 0,
+      message: "Lỗi server",
+      error: error.message,
+    });
   }
 };
 
@@ -266,9 +310,10 @@ const forgotPassword = async (req, res) => {
     // Check if user exists
     const user = await User.findOne({ where: { email } });
     if (!user) {
-      return res
-        .status(404)
-        .json({ message: "Email không tồn tại trong hệ thống" });
+      return res.status(404).json({
+        code: 0,
+        message: "Email không tồn tại trong hệ thống",
+      });
     }
 
     // Generate OTP
@@ -286,62 +331,42 @@ const forgotPassword = async (req, res) => {
     console.log(`[DEBUG] OTP cho ${email}: ${otp}`);
 
     res.json({
+      code: 1,
       message: "Mã OTP đã được gửi đến email của bạn",
       email,
+      otp,
     });
   } catch (error) {
-    res.status(500).json({ message: "Lỗi server", error: error.message });
+    res.status(500).json({
+      code: 0,
+      message: "Lỗi server",
+      error: error.message,
+    });
   }
 };
 
-const verifyOTP = async (req, res) => {
+const resetPassword = async (req, res) => {
   try {
-    const { email, otp, newPassword } = req.body;
+    const { email, newPassword } = req.body;
 
-    // Check if OTP exists and is valid
-    const otpData = otpStore.get(email);
-    if (!otpData) {
-      return res
-        .status(400)
-        .json({ message: "OTP không tồn tại hoặc đã hết hạn" });
-    }
-
-    // Check OTP expiration (5 minutes)
-    if (Date.now() - otpData.timestamp > 5 * 60 * 1000) {
-      otpStore.delete(email);
-      return res.status(400).json({ message: "OTP đã hết hạn" });
-    }
-
-    // Check if max attempts reached
-    if (otpData.attempts >= 3) {
-      otpStore.delete(email);
-      return res
-        .status(400)
-        .json({ message: "Đã vượt quá số lần thử. Vui lòng yêu cầu OTP mới" });
-    }
-
-    // Verify OTP
-    if (otpData.otp !== otp) {
-      otpData.attempts++;
-      return res.status(400).json({ message: "OTP không chính xác" });
-    }
-
-    // Find user and update password
     const user = await User.findOne({ where: { email } });
     if (!user) {
-      return res.status(404).json({ message: "Không tìm thấy người dùng" });
+      return res
+        .status(404)
+        .json({ code: 0, message: "Không tìm thấy người dùng" });
     }
 
-    // Hash and update new password
     const hashedPassword = await bcrypt.hash(newPassword, 10);
     await user.update({ password_hash: hashedPassword });
 
-    // Clear OTP
+    // Clear OTP sau khi đổi mật khẩu thành công
     otpStore.delete(email);
 
-    res.json({ message: "Đặt lại mật khẩu thành công" });
+    res.json({ code: 1, message: "Đặt lại mật khẩu thành công" });
   } catch (error) {
-    res.status(500).json({ message: "Lỗi server", error: error.message });
+    res
+      .status(500)
+      .json({ code: 0, message: "Lỗi server", error: error.message });
   }
 };
 
@@ -352,5 +377,5 @@ module.exports = {
   updateProfile,
   getProfile,
   forgotPassword,
-  verifyOTP,
+  resetPassword,
 };

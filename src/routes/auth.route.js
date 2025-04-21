@@ -7,15 +7,15 @@ const {
   updateProfile,
   getProfile,
   forgotPassword,
-  verifyOTP,
+  resetPassword,
 } = require("../controllers/auth.controller");
-const { authenticateToken } = require("../middlewares/auth.middleware");
+const { authenticateToken, verifyOTP } = require("../middlewares/auth.middleware");
 
 // Public routes
 router.post("/register", register);
 router.post("/login", login);
 router.post("/forgot-password", forgotPassword);
-router.post("/verify-otp", verifyOTP);
+router.post("/reset-password", verifyOTP, resetPassword);
 
 // Protected route example
 router.get("/profile", authenticateToken, getProfile);
