@@ -50,3 +50,31 @@ api/exercises/:id?type=1
     }
   ]
 }
+10. Nộp bài thi color
+{
+  "exerciseId": 8,
+  "answers": [
+    {
+      "questionId": 1,
+      "selectedAnswer": "2" 
+    },
+    {
+      "questionId": 2,
+      "selectedAnswer": "5" 
+    }
+  ]
+}
+11. Nộp bài thi counting
+{
+  "exerciseId": 6,
+  "answers": [
+    {
+      "questionId": 1,
+      "selectedAnswer": "2" 
+    },
+    {
+      "questionId": 2,
+      "selectedAnswer": "5" 
+    }
+  ]
+}

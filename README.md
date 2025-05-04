@@ -10,6 +10,11 @@
 - http://localhost:5000/api/auth/forgot-password
 - http://localhost:5000/api/auth/reset-password
 - http://localhost:5000/api/student/submit/multiple-choice
+- http://localhost:5000/api/student/submit/counting
+- http://localhost:5000/api/student/submit/color
+
+
+
 ### tạo file .env chứa các biến môi trường
 # app
 - PORT = 5000
