@@ -67,6 +67,7 @@ const submitMultipleChoiceExercise = async (req, res) => {
   try {
     const { exerciseId, answers } = req.body;
     const studentId = req.user.id;
+    const studentGrade = req.user.grade; 
 
     // Verify exercise exists and is multiple choice type
     const exercise = await Exercise.findOne({
@@ -123,8 +124,8 @@ const submitMultipleChoiceExercise = async (req, res) => {
     previousSubmissions.forEach((submission) => {
       submission.StudentAnswerMultipleChoices.forEach((answer) => {
         if (
-          answer.selected_answer ===
-          answer.MultipleChoiceQuestion.MultipleChoiceAnswers[0].id.toString()
+          parseInt(answer.selected_answer) === // Convert string to int
+          answer.MultipleChoiceQuestion.MultipleChoiceAnswers[0].id
         ) {
           previouslyCorrectQuestionIds.add(answer.question_id);
         }
@@ -160,25 +161,23 @@ const submitMultipleChoiceExercise = async (req, res) => {
       );
 
       if (question) {
-        // Save student's answer
+        // Save student's answer as integer
         await StudentAnswerMultipleChoice.create(
           {
             submission_id: submission.id,
             question_id: answer.questionId,
-            selected_answer: answer.selectedAnswer, // Now storing answer ID
+            selected_answer: parseInt(answer.selectedAnswer), // Convert to integer
           },
           { transaction }
         );
 
-        // Check if answer is correct
+        // Check if answer is correct using integer comparison
         const correctAnswer = question.MultipleChoiceAnswers[0];
-        const isCorrect =
-          correctAnswer &&
-          answer.selectedAnswer === correctAnswer.id.toString();
+        const isCorrect = correctAnswer && 
+                         parseInt(answer.selectedAnswer) === correctAnswer.id;
 
         if (isCorrect) {
           correctAnswers++;
-          // Only count for new score if not previously correct
           if (!previouslyCorrectQuestionIds.has(answer.questionId)) {
             newCorrectAnswers++;
             previouslyCorrectQuestionIds.add(answer.questionId);
@@ -191,7 +190,10 @@ const submitMultipleChoiceExercise = async (req, res) => {
     const submissionScore = Math.round((correctAnswers / totalQuestions) * 100);
 
     // Calculate points to add to total score
-    const pointsToAdd = Math.round((newCorrectAnswers / totalQuestions) * 100);
+    let pointsToAdd = 0;
+    if(studentGrade === exercise.grade) {
+      pointsToAdd = Math.round((newCorrectAnswers / totalQuestions) * 100);
+    }
 
     // Update submission score
     await submission.update({ score: submissionScore }, { transaction });
