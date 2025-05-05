@@ -1,4 +1,4 @@
-const express = require("express");
+ const express = require("express");
 const app = express();
 require('dotenv').config();
 const port = process.env.PORT || 2804;
@@ -16,9 +16,12 @@ app.use(cors());
 // routes
 route(app);
 
-// connect db
-connection();
-
-app.listen(port, () => {
-  console.log(`Example app listening on port ${port}`);
+// Trong ứng dụng Express
+app.listen(5000, async () => {
+  try {
+    await connection();
+    console.log("Server started on port 5000");
+  } catch (err) {
+    console.error("Failed to start server:", err);
+  }
 });

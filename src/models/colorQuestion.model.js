@@ -14,6 +14,10 @@ const ColorQuestion = sequelize.define('ColorQuestion', {
   image_url: {
     type: DataTypes.STRING,
     allowNull: false
+  },
+  public_id: {
+    type: DataTypes.STRING,
+    allowNull: false
   }
 }, {
   tableName: 'color_questions',
