@@ -20,6 +20,10 @@ const CountingQuestion = sequelize.define('CountingQuestion', {
   image_url: {
     type: DataTypes.STRING,
     allowNull: false
+  },
+  public_id: {
+    type: DataTypes.STRING,
+    allowNull: false
   }
 }, {
   tableName: 'counting_questions',
