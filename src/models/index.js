@@ -44,7 +44,7 @@ ColorAnswer.belongsTo(ColorQuestion, { foreignKey: 'question_id' });
 
 // Student - Submission relationship
 Student.hasMany(Submission, { foreignKey: 'student_id' });
-Submission.belongsTo(Student, { foreignKey: 'student_id' });
+Submission.belongsTo(Student, { foreignKey: 'student_id'});
 
 // Exercise - Submission relationship
 Exercise.hasMany(Submission, { foreignKey: 'exercise_id' });
