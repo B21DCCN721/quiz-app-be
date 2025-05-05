@@ -11,9 +11,9 @@ function route(app) {
     app.use('/api/teacher', teacherRoute);
     app.use('/api/student', studentRoute);
     app.use('/api/exercises', exerciseRoute);
+    app.use('/api/submissions', submissionRoute);
     app.use('/api/history', historyRoute);
     app.use('/api/comments', commentRoute); 
-    app.use('/api/submissions', submissionRoute);
 }
 
 module.exports = route;
