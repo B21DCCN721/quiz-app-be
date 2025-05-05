@@ -126,6 +126,7 @@ const login = async (req, res) => {
     });
   }
 };
+
 const changePassword = async (req, res) => {
   try {
     const { oldPassword, newPassword } = req.body;
@@ -181,6 +182,39 @@ const changePassword = async (req, res) => {
     });
   }
 };
+
+const changePasswordAdmin = async (req, res) => {
+  try {
+    const { userId, newPassword } = req.body;
+
+    // Find user
+    const user = await User.findByPk(userId);
+    if (!user) {
+      return res.status(404).json({
+        code: 0,
+        message: "Không tìm thấy người dùng",
+      });
+    }
+
+    // Hash new password
+    const hashedNewPassword = await bcrypt.hash(newPassword, 10);
+
+    // Update password
+    await user.update({ password_hash: hashedNewPassword });
+
+    res.json({
+      code: 1,
+      message: "Đổi mật khẩu thành công",
+    });
+  } catch (error) {
+    res.status(500).json({
+      code: 0,
+      message: "Lỗi server",
+      error: error.message,
+    });
+  }
+}
+
 const getProfile = async (req, res) => {
   try {
     const userId = req.user.id; // From auth middleware
@@ -378,4 +412,5 @@ module.exports = {
   getProfile,
   forgotPassword,
   resetPassword,
+  changePasswordAdmin,
 };

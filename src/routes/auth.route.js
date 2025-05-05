@@ -8,6 +8,7 @@ const {
   getProfile,
   forgotPassword,
   resetPassword,
+  changePasswordAdmin,
 } = require("../controllers/auth.controller");
 const { authenticateToken, verifyOTP } = require("../middlewares/auth.middleware");
 
@@ -21,5 +22,8 @@ router.post("/reset-password", verifyOTP, resetPassword);
 router.get("/profile", authenticateToken, getProfile);
 router.post("/change-password", authenticateToken, changePassword);
 router.put("/change-profile", authenticateToken, updateProfile);
+
+// change-password
+router.post("/change-password-admin", changePasswordAdmin);
 
 module.exports = router;
