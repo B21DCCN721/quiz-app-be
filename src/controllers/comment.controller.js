@@ -8,15 +8,20 @@ const getComments = async (req, res) => {
   try {
     const comments = await Comment.findAll({
       where: { exercise_id: exerciseId },
+      include: [
+        {
+          model: User,
+          attributes: ["id", "name"], // Chỉ lấy các trường cần thiết từ bảng User
+        },
+      ],
       order: [["created_at", "DESC"]],
     });
-
     res.status(200).json({
       success: true,
       data: comments,
     });
   } catch (error) {
-    console.error("Lỗi khi lấy danh sách comment:", error);
+    console.error("Lỗi khi lấy danh sách comment:", error); // Log lỗi chi tiết
     res.status(500).json({
       success: false,
       message: "Lỗi server",
@@ -81,23 +86,20 @@ const replyComment = async (req, res) => {
       exercise_id,
       parent_id,
       content,
-      created_at: new Date()
+      created_at: new Date(),
     });
-
-    // Lấy thông tin người reply
+    
     const replier = await User.findByPk(user_id, {
-      attributes: ['name']
+      attributes: ['name'],
     });
-
-    // Tạo notification trong database
+    
     await Notification.create({
       user_id: parentComment.User.id,
       exercise_id,
       content: `${replier.name} đã trả lời bình luận của bạn`,
-      notification_type: 'comment',
-      created_at: new Date()
+      notificationType: 'comment',
+      created_at: new Date(),
     });
-
     // Gửi push notification
     if (parentComment.User.id !== user_id) { // Không gửi nếu tự reply chính mình
       await sendPushNotification(
