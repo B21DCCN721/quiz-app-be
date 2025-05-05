@@ -6,6 +6,12 @@ const {
   MultipleChoiceAnswer,
   Submission,
   StudentAnswerMultipleChoice,
+  ColorAnswer,
+  ColorQuestion,
+  StudentAnswerColor,
+  CountingQuestion,
+  CountingAnswer,
+  StudentAnswerCounting
 } = require("../models");
 const { sequelize } = require("../configs/connectDB");
 
@@ -228,7 +234,287 @@ const submitMultipleChoiceExercise = async (req, res) => {
   }
 };
 
+
+const submitColorExercise = async (req, res) => {
+  const transaction = await sequelize.transaction();
+
+  try {
+    const { exerciseId, answers } = req.body;
+    const studentId = req.user.id;
+
+    // Kiểm tra bài tập có tồn tại và đúng dạng bài nhận biết màu sắc (type 3)
+    const exercise = await Exercise.findOne({
+      where: {
+        id: exerciseId,
+        exercise_type: 3
+      },
+      include: [{
+        model: ColorQuestion,
+        include: [ColorAnswer]
+      }]
+    });
+
+    if (!exercise) {
+      return res.status(404).json({ message: "Không tìm thấy bài kiểm tra nhận biết màu sắc" });
+    }
+
+    const totalQuestions = exercise.ColorQuestions.length;
+    if (totalQuestions === 0) {
+      return res.status(400).json({ message: "Bài kiểm tra không có câu hỏi" });
+    }
+
+    // Lấy các bài nộp cũ của học sinh cho bài này
+    const previousSubmissions = await Submission.findAll({
+      where: {
+        student_id: studentId,
+        exercise_id: exerciseId
+      },
+      include: [{
+        model: StudentAnswerColor
+      }]
+    });
+
+    const previouslyCorrectQuestionIds = new Set();
+
+    // Xác định những câu đã làm đúng trước đó
+    previousSubmissions.forEach(submission => {
+      submission.StudentAnswerColors.forEach(answer => {
+        const question = exercise.ColorQuestions.find(q => q.id === answer.question_id);
+        const correctAnswer = question?.ColorAnswers?.[0];
+
+        if (correctAnswer && parseInt(answer.selected_answer) === correctAnswer.correct_position) {
+          previouslyCorrectQuestionIds.add(answer.question_id);
+        }
+      });
+    });
+
+    // Tạo bản ghi submission mới
+    const submission = await Submission.create({
+      student_id: studentId,
+      exercise_id: exerciseId,
+      submitted_at: new Date()
+    }, { transaction });
+
+    let correctAnswers = 0;
+    let newCorrectAnswers = 0;
+    const answerResults = [];
+
+    for (const answer of answers) {
+      const question = exercise.ColorQuestions.find(q => q.id === answer.questionId);
+      const correctAnswer = question?.ColorAnswers?.[0];
+
+      // Lưu câu trả lời của học sinh
+      const studentAnswer = await StudentAnswerColor.create({
+        submission_id: submission.id,
+        question_id: answer.questionId,
+        selected_answer: answer.selectedAnswer.toString(),
+        correct_answer: correctAnswer?.correct_position.toString()
+      }, { transaction });
+
+      const isCorrect = parseInt(studentAnswer.selected_answer) === correctAnswer?.correct_position;
+
+      if (isCorrect) {
+        correctAnswers++;
+        if (!previouslyCorrectQuestionIds.has(answer.questionId)) {
+          newCorrectAnswers++;
+          previouslyCorrectQuestionIds.add(answer.questionId);
+        }
+      }
+
+      answerResults.push({
+        questionId: answer.questionId,
+        selectedAnswer: parseInt(answer.selectedAnswer),
+        correctAnswer: correctAnswer?.correct_position,
+        isCorrect
+      });
+
+      // // So sánh câu trả lời với đáp án đúng
+      // if (correctAnswer && parseInt(answer.selectedAnswer) === correctAnswer.correct_position) {
+      //   correctAnswers++;
+      //   if (!previouslyCorrectQuestionIds.has(answer.questionId)) {
+      //     newCorrectAnswers++;
+      //     previouslyCorrectQuestionIds.add(answer.questionId);
+      //   }
+      // }
+    }
+
+    const submissionScore = Math.round((correctAnswers / totalQuestions) * 100);
+    const pointsToAdd = Math.round((newCorrectAnswers / totalQuestions) * 100);
+
+    await submission.update({ score: submissionScore }, { transaction });
+
+    const student = await Student.findOne({ where: { user_id: studentId } });
+
+    await student.update({
+      score: student.score + pointsToAdd
+    }, { transaction });
+
+    await transaction.commit();
+
+    res.json({
+      message: "Nộp bài thành công",
+      result: {
+        totalQuestions,
+        correctAnswers,
+        newCorrectAnswers,
+        submissionScore,
+        pointsAdded: pointsToAdd,
+        newStudentScore: student.score,
+        answers: answerResults
+      }
+    });
+
+  } catch (error) {
+    await transaction.rollback();
+    res.status(500).json({
+      message: "Lỗi server",
+      error: error.message
+    });
+  }
+};
+
+const submitCountingExercise = async (req, res) => {
+  const transaction = await sequelize.transaction();
+
+  try {
+    const { exerciseId, answers } = req.body;
+    const studentId = req.user.id;
+
+    // Kiểm tra tồn tại bài tập và đúng loại đếm
+    const exercise = await Exercise.findOne({
+      where: {
+        id: exerciseId,
+        exercise_type: 2
+      },
+      include: [{
+        model: CountingQuestion,
+        include: [CountingAnswer]
+      }]
+    });
+
+    if (!exercise) {
+      return res.status(404).json({ message: "Không tìm thấy bài kiểm tra dạng đếm" });
+    }
+
+    const totalQuestions = exercise.CountingQuestions.length;
+    if (totalQuestions === 0) {
+      return res.status(400).json({ message: "Bài kiểm tra không có câu hỏi" });
+    }
+
+    // Lấy các lần nộp trước đó
+    const previousSubmissions = await Submission.findAll({
+      where: {
+        student_id: studentId,
+        exercise_id: exerciseId
+      },
+      include: [{
+        model: StudentAnswerCounting
+      }]
+    });
+
+    const previouslyCorrectQuestionIds = new Set();
+
+    // Duyệt qua các lần nộp cũ để đánh dấu câu trả lời đúng trước đó
+    previousSubmissions.forEach(submission => {
+      submission.StudentAnswerCountings.forEach(answer => {
+        const question = exercise.CountingQuestions.find(q => q.id === answer.question_id);
+        const correctAnswer = question?.CountingAnswers?.[0];
+
+        if (correctAnswer && parseInt(answer.selected_answer) === correctAnswer.correct_count) {
+          previouslyCorrectQuestionIds.add(answer.question_id);
+        }
+      });
+    });
+
+    // Tạo submission mới
+    const submission = await Submission.create({
+      student_id: studentId,
+      exercise_id: exerciseId,
+      submitted_at: new Date()
+    }, { transaction });
+
+    // Chấm điểm
+    let correctAnswers = 0;
+    let newCorrectAnswers = 0;
+    const answerResults = [];
+
+    for (const answer of answers) {
+      const question = exercise.CountingQuestions.find(q => q.id === answer.questionId);
+      const correctAnswer = question?.CountingAnswers?.[0];
+
+      // Lưu câu trả lời
+      const studentAnswer = await StudentAnswerCounting.create({
+        submission_id: submission.id,
+        question_id: answer.questionId,
+        selected_answer: answer.selectedAnswer.toString(),
+        correct_answer: correctAnswer?.correct_count.toString()
+      }, { transaction });
+
+      const isCorrect = parseInt(studentAnswer.selected_answer) === correctAnswer?.correct_count;
+
+      if (isCorrect) {
+        correctAnswers++;
+        if (!previouslyCorrectQuestionIds.has(answer.questionId)) {
+          newCorrectAnswers++;
+          previouslyCorrectQuestionIds.add(answer.questionId);
+        }
+      }
+
+      answerResults.push({
+        questionId: answer.questionId,
+        selectedAnswer: parseInt(answer.selectedAnswer),
+        correctAnswer: correctAnswer?.correct_count,
+        isCorrect
+      });
+
+      // if (correctAnswer && parseInt(answer.selectedAnswer) === correctAnswer.correct_count) {
+      //   correctAnswers++;
+
+      //   if (!previouslyCorrectQuestionIds.has(answer.questionId)) {
+      //     newCorrectAnswers++;
+      //     previouslyCorrectQuestionIds.add(answer.questionId);
+      //   }
+      // }
+    }
+
+    const submissionScore = Math.round((correctAnswers / totalQuestions) * 100);
+    const pointsToAdd = Math.round((newCorrectAnswers / totalQuestions) * 100);
+
+    await submission.update({ score: submissionScore }, { transaction });
+
+    const student = await Student.findOne({ where: { user_id: studentId } });
+
+    await student.update({
+      score: student.score + pointsToAdd
+    }, { transaction });
+
+    await transaction.commit();
+
+    res.json({
+      message: "Nộp bài thành công",
+      result: {
+        totalQuestions,
+        correctAnswers,
+        newCorrectAnswers,
+        submissionScore,
+        pointsAdded: pointsToAdd,
+        newStudentScore: student.score,
+        answers: answerResults
+      }
+    });
+
+  } catch (error) {
+    await transaction.rollback();
+    res.status(500).json({
+      message: "Lỗi server",
+      error: error.message
+    });
+  }
+};
+
 module.exports = {
   getStudentRankings,
   submitMultipleChoiceExercise,
+  submitColorExercise,
+  submitCountingExercise
 };
