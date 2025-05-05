@@ -8,6 +8,6 @@ router.use(authenticateToken, isStudent);
 router.get('/rankings', getStudentRankings);
 router.post('/submit/multiple-choice', submitMultipleChoiceExercise);
 router.post('/submit/color', submitColorExercise); 
-router.post('/submit/counting', submitCountingExercise); // Assuming the same function handles both types of submissions
+router.post('/submit/counting', submitCountingExercise); 
 
 module.exports = router;
