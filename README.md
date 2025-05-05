@@ -32,3 +32,19 @@
 - GOOGLE_CLIENT_SECRET
 - GOOGLE_REFRESH_TOKEN
 - EMAIL_FROM
+
+## sau khi merge cua duy-branch
+- cap nhat comment model
+- tao service moi
+- cap nhat cmt controller
+- them route api
+- cap nhat model user de luu expo token
+- thay doi db: 
+    ALTER TABLE comments 
+    ADD COLUMN parent_id INT,
+    ADD FOREIGN KEY (parent_id) REFERENCES comments(id) ON DELETE CASCADE;
+
+    ALTER TABLE users
+    ADD COLUMN expo_push_token VARCHAR(255);
+
+    (thay int bang bigint)
