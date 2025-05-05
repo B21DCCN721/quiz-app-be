@@ -12,9 +12,9 @@ const { upload } = require('../configs/cloudinary.config');
 // All routes in this file require authentication and teacher role
 router.use(authenticateToken, isTeacher);
 
-router.post('/exercise/create/multiple-choice', createMultipleChoiceExercise);
-router.post('/exercise/create/counting', upload.array('images'), createCountingExercise);
-router.post('/exercise/create/color', upload.array('images'), createColorExercise);
-router.delete('/exercise/delete/:id', deleteExercise);
+router.post('/exercises/create/multiple-choice', createMultipleChoiceExercise);
+router.post('/exercises/create/counting', upload.array('images'), createCountingExercise);
+router.post('/exercises/create/color', upload.array('images'), createColorExercise);
+router.delete('/exercises/delete/:id', deleteExercise);
 
 module.exports = router;

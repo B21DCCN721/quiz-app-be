@@ -8,6 +8,8 @@ const { Submission,
   MultipleChoiceQuestion, 
   CountingQuestion, 
   ColorQuestion, 
+  ColorAnswer,
+  CountingAnswer,
   User } = require("../models");
 
 const getSubmissionsByExercise = async (req, res) => {
