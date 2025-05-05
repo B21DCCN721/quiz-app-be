@@ -1,4 +1,5 @@
 require("dotenv").config();
+const { Op } = require("sequelize");
 const { User, Student } = require("../models");
 const bcrypt = require("bcryptjs");
 const jwt = require("jsonwebtoken");
@@ -228,7 +229,7 @@ const getProfile = async (req, res) => {
 const updateProfile = async (req, res) => {
   try {
     const userId = req.user.id;
-    const { name, grade, avatar } = req.body;
+    const { name, grade, avatar, email } = req.body;
 
     // Validate base64 image string if provided
     if (avatar && !avatar.match(/^data:image\/(png|jpg|jpeg);base64,/)) {
@@ -236,6 +237,23 @@ const updateProfile = async (req, res) => {
         code: 0,
         message: "Avatar phải là ảnh định dạng base64 (PNG, JPG, JPEG)",
       });
+    }
+
+    // If email is provided, check if it's already in use
+    if (email) {
+      const existingUser = await User.findOne({
+        where: {
+          email,
+          id: { [Op.ne]: userId }, // Exclude current user
+        },
+      });
+
+      if (existingUser) {
+        return res.status(400).json({
+          code: 0,
+          message: "Email đã được sử dụng bởi người dùng khác",
+        });
+      }
     }
 
     // Find user with student info if exists
@@ -258,14 +276,18 @@ const updateProfile = async (req, res) => {
 
     // Update user info
     const updateData = { name };
-    if (avatar) {
-      updateData.avatar = avatar;
-    }
+    if (avatar) updateData.avatar = avatar;
+    if (email) updateData.email = email;
     await user.update(updateData);
 
     // Update student grade if user is student
+    // Update student grade if user is student
     if (user.role === "student" && grade) {
-      await user.Student.update({ grade, score: 0 });
+      const currentGrade = user.Student?.grade;
+
+      if (currentGrade !== grade) {
+        await user.Student.update({ grade, score: 0 });
+      }
     }
 
     // Get updated user data

@@ -186,7 +186,7 @@ const submitMultipleChoiceExercise = async (req, res) => {
     // Calculate points to add to total score
     let pointsToAdd = 0;
     if(studentGrade === exercise.grade) {
-      pointsToAdd = Math.round((newCorrectAnswers / totalQuestions) * 100);
+      pointsToAdd = Math.round((newCorrectAnswers / totalQuestions) * 100); 
     }
 
     // Update submission score
