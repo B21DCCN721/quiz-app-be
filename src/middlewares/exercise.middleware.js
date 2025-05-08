@@ -1,4 +1,5 @@
 const { Op } = require('sequelize');
+const { sequelize } = require('../configs/connectDB');
 
 const exerciseFilterMiddleware = (req, res, next) => {
   const { type, grade, search, id } = req.query;
@@ -23,7 +24,7 @@ const exerciseFilterMiddleware = (req, res, next) => {
   if (search) {
     whereClause[Op.or] = [
       { title: { [Op.like]: `%${search}%` } },
-      { description: { [Op.like]: `%${search}%` } }
+      { id: { [Op.like]: `%${search}%` } }
     ];
   }
 
