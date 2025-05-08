@@ -36,18 +36,22 @@ const Notification = sequelize.define(
     sentTime: {
       type: DataTypes.DATE,
       defaultValue: DataTypes.NOW,
+      field: "sent_time",
     },
     isRead: {
       type: DataTypes.BOOLEAN,
       defaultValue: false,
+      field: "is_read",
     },
     notificationType: {
       type: DataTypes.ENUM("assignment", "comment"),
       allowNull: false,
+      field: "notification_type",
     },
     created_at: {
       type: DataTypes.DATE,
       defaultValue: DataTypes.NOW,
+      field: "created_at",
     },
   },
   {
