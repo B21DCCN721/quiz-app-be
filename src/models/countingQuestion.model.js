@@ -24,6 +24,10 @@ const CountingQuestion = sequelize.define('CountingQuestion', {
   public_id: {
     type: DataTypes.STRING,
     allowNull: false
+  },
+  question_text: {
+    type: DataTypes.STRING,
+    allowNull: false
   }
 }, {
   tableName: 'counting_questions',
