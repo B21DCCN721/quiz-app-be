@@ -27,10 +27,6 @@ const User = sequelize.define('User', {
   avatar: {
     type: DataTypes.TEXT('long'), // For storing large base64 strings
     allowNull: true
-  },
-  expo_push_token: {
-    type: DataTypes.STRING,
-    allowNull: true
   }
 }, {
   tableName: 'users',
