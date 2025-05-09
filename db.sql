@@ -135,6 +135,9 @@ CREATE TABLE notifications (
     FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
     FOREIGN KEY (exercise_id) REFERENCES exercises(id) ON DELETE CASCADE
 );
+ALTER TABLE comments ADD COLUMN parent_id BIGINT UNSIGNED NULL, ADD CONSTRAINT fk_parent_id FOREIGN KEY (parent_id) REFERENCES comments(id) ON DELETE CASCADE
+alter table counting_questions add column public_id VARCHAR(255);
+alter table color_questions add column public_id VARCHAR(255);
 -- Insert data
 INSERT INTO users (email, password_hash, name, role) VALUES
                                                          ('student1@example.com', 'hashed_password_1', 'Nguyen Van A', 'student'),

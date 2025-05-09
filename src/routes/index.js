@@ -5,6 +5,7 @@ const exerciseRoute = require('./exercise.route');
 const historyRoute = require('./history.route');
 const commentRoute = require('./comment.route'); 
 const submissionRoute = require('./submission.route');
+const chatRoute = require('./chat.route');
 
 function route(app) {
     app.use('/api/auth', authRoute);
@@ -14,6 +15,7 @@ function route(app) {
     app.use('/api/submissions', submissionRoute);
     app.use('/api/history', historyRoute);
     app.use('/api/comments', commentRoute); 
+    app.use('/api/chat', chatRoute);
 }
 
 module.exports = route;

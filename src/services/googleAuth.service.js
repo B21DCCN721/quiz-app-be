@@ -1,5 +1,8 @@
 const nodemailer = require("nodemailer");
 const { OAuth2Client } = require("google-auth-library");
+const axios = require('axios');
+require('dotenv').config();
+const GEMINI_API_KEY = process.env.GEMINI_API_KEY;
 
 const sendOTPEmail = async (email, otp) => {
   try {
@@ -42,4 +45,31 @@ const sendOTPEmail = async (email, otp) => {
     throw error;
   }
 };
-module.exports = { sendOTPEmail };
+const aiGemini = async (req, res) => {
+  const userMessage = req.body.message;
+
+  try {
+    const response = await axios.post(
+      `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${GEMINI_API_KEY}`,
+      {
+        contents: [
+          {
+            parts: [{ text: userMessage }],
+          },
+        ],
+      },
+      {
+        headers: {
+          'Content-Type': 'application/json',
+        },
+      }
+    );
+
+    const reply = response.data?.candidates?.[0]?.content?.parts?.[0]?.text || 'Không có phản hồi.';
+    res.json({ reply });
+  } catch (error) {
+    console.error('Gemini API error:', error.message);
+    res.status(500).json({ error: 'Lỗi khi gọi Gemini API' });
+  }
+}
+module.exports = { sendOTPEmail, aiGemini };
