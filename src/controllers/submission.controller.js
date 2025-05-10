@@ -186,12 +186,13 @@ const getSubmissionDetail = async (req, res) => {
       },
       questions: questionsWithAnswers.map(q => ({
         id: q.id,
-        question_text: q.question || q.image_url,
+        image_url: q.image_url,
+        question_text: q.question_text,
         type: exerciseType,
         correct_answers: q.MultipleChoiceAnswers || q.CountingAnswers || q.ColorAnswers,
         student_answer: q.StudentAnswerMultipleChoices?.[0]?.selected_answer || 
-                       q.StudentAnswerCountings?.[0]?.selected_answer || 
-                       q.StudentAnswerColors?.[0]?.selected_answer
+                        q.StudentAnswerCountings?.[0]?.selected_answer || 
+                        q.StudentAnswerColors?.[0]?.selected_answer
       }))
     };
 
