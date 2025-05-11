@@ -14,13 +14,11 @@ const { Submission,
 
 const getUserHistory = async (req, res) => {
   try {
-    const { page = 1, limit = 10, exercise_type } = req.query; // Lấy tham số từ query
+    const { exercise_type } = req.query; // Lấy tham số từ query
     const userId = req.user.id; // Lấy ID người dùng từ middleware xác thực
 
-    const offset = (page - 1) * limit;
-
     // Lấy danh sách lịch sử làm bài
-    const { rows: history, count: totalItems } = await Submission.findAndCountAll({
+    const history = await Submission.findAll({
       where: { student_id: userId }, // Lọc theo ID người dùng
       include: [
         {
@@ -30,8 +28,6 @@ const getUserHistory = async (req, res) => {
         },
       ],
       attributes: ["id", "score", "submitted_at"], // Lấy các cột cần thiết từ bảng Submission
-      limit: parseInt(limit),
-      offset: parseInt(offset),
       order: [["submitted_at", "DESC"]], // Sắp xếp theo thời gian nộp bài giảm dần
     });
 
@@ -50,11 +46,6 @@ const getUserHistory = async (req, res) => {
       code: 1,
       message: "Lấy lịch sử làm bài thành công",
       data,
-      pagination: {
-        currentPage: parseInt(page),
-        totalPages: Math.ceil(totalItems / limit),
-        totalItems,
-      },
     });
   } catch (error) {
     console.error("Lỗi trong getUserHistory:", error); // Log lỗi để debug
@@ -72,6 +63,7 @@ const getHistoryResult = async (req, res) => {
     // Lấy thông tin bài kiểm tra từ bảng Submission
     const submission = await Submission.findOne({
       where: { id },
+      attributes: ["id", "exercise_id", "score"],
       include: [
         {
           model: Exercise,
@@ -129,6 +121,7 @@ const getHistoryResult = async (req, res) => {
       message: "Lấy thông tin chi tiết bài kiểm tra thành công",
       data: {
         id: submission.id,
+        exerciseId: submission.exercise_id,
         examName: submission.Exercise.title,
         score: submission.score,
         totalQuestions,
@@ -194,16 +187,32 @@ const getHistoryDetailMultipleChoice = async (req, res) => {
       attributes: ["selected_answer"], // Lấy thông tin câu trả lời của người dùng
     });
 
+    // Lấy danh sách các `selected_answer` từ studentAnswers
+    const selectedAnswerIds = studentAnswers.map((answer) => answer.selected_answer);
+
+    // Truy vấn bảng MultipleChoiceAnswer để lấy thông tin userAnswer
+    const multipleChoiceAnswers = await MultipleChoiceAnswer.findAll({
+      where: { id: selectedAnswerIds },
+      attributes: ["id", "answer_text"], // Lấy id và nội dung câu trả lời
+    });
+
+    // Tạo một ánh xạ từ id -> answer_text
+    const answerMap = multipleChoiceAnswers.reduce((map, answer) => {
+      map[answer.id] = answer.answer_text;
+      return map;
+    }, {});
+
     // Định dạng dữ liệu trả về
     const formattedAnswers = studentAnswers.map((answer, index) => {
       const question = answer.MultipleChoiceQuestion;
       const correctAnswer = question.MultipleChoiceAnswers?.[0]?.answer_text || null; // Lấy đáp án đúng
+      const userAnswer = answerMap[answer.selected_answer] || "Không tìm thấy câu trả lời"; // Lấy nội dung câu trả lời của người dùng
 
       return {
         order: index + 1,
         questionText: question?.question || "Không tìm thấy câu hỏi", // Nội dung câu hỏi
         correctAnswer: correctAnswer, // Nội dung đáp án đúng
-        userAnswer: answer.selected_answer, // Đáp án người dùng chọn
+        userAnswer: userAnswer, // Nội dung câu trả lời của người dùng
       };
     });
 
@@ -258,11 +267,11 @@ const getHistoryDetailCountingQuestion = async (req, res) => {
       include: [
         {
           model: CountingQuestion, // Lấy thông tin câu hỏi từ CountingQuestion
-          attributes: ["id"], // Lấy ID câu hỏi
+          attributes: ["id","question_text"], // Lấy ID câu hỏi
           include: [
             {
               model: CountingAnswer, // Lấy đáp án đúng từ CountingAnswer
-              attributes: ["object_name", "correct_count"], // Lấy thông tin đáp án đúng
+              attributes: [ "correct_count"], // Lấy thông tin đáp án đúng
             },
           ],
         },
@@ -278,9 +287,9 @@ const getHistoryDetailCountingQuestion = async (req, res) => {
 
       return {
         order: index + 1, // Thứ tự tự động tăng từ 1
-        objectName: correctAnswer?.object_name || "Không tìm thấy đối tượng", // Tên đối tượng
         correctAnswer: correctAnswer?.correct_count || "Không tìm thấy đáp án đúng", // Đáp án đúng
         userAnswer: answer.selected_answer, // Câu trả lời của học sinh
+        questionText: question.question_text, // Nội dung câu hỏi
       };
     });
 
@@ -335,7 +344,7 @@ const getHistoryDetailColorQuestion = async (req, res) => {
       include: [
         {
           model: ColorQuestion, // Lấy thông tin câu hỏi từ ColorQuestion
-          attributes: ["id"], // Lấy ID câu hỏi
+          attributes: ["id","question_text"], // Lấy ID câu hỏi
           include: [
             {
               model: ColorAnswer, // Lấy đáp án đúng từ ColorAnswer
@@ -357,6 +366,7 @@ const getHistoryDetailColorQuestion = async (req, res) => {
         order: index + 1, // Thứ tự tự động tăng từ 1
         correctAnswer: correctAnswer?.correct_position || "Không tìm thấy đáp án đúng", // Đáp án đúng
         userAnswer: answer.selected_answer, // Câu trả lời của học sinh
+        questionText: question.question_text,
       };
     });
 
