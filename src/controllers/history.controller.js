@@ -14,13 +14,11 @@ const { Submission,
 
 const getUserHistory = async (req, res) => {
   try {
-    const { page = 1, limit = 10, exercise_type } = req.query; // Lấy tham số từ query
+    const { exercise_type } = req.query; // Lấy tham số từ query
     const userId = req.user.id; // Lấy ID người dùng từ middleware xác thực
 
-    const offset = (page - 1) * limit;
-
     // Lấy danh sách lịch sử làm bài
-    const { rows: history, count: totalItems } = await Submission.findAndCountAll({
+    const history = await Submission.findAll({
       where: { student_id: userId }, // Lọc theo ID người dùng
       include: [
         {
@@ -30,8 +28,6 @@ const getUserHistory = async (req, res) => {
         },
       ],
       attributes: ["id", "score", "submitted_at"], // Lấy các cột cần thiết từ bảng Submission
-      limit: parseInt(limit),
-      offset: parseInt(offset),
       order: [["submitted_at", "DESC"]], // Sắp xếp theo thời gian nộp bài giảm dần
     });
 
@@ -50,11 +46,6 @@ const getUserHistory = async (req, res) => {
       code: 1,
       message: "Lấy lịch sử làm bài thành công",
       data,
-      pagination: {
-        currentPage: parseInt(page),
-        totalPages: Math.ceil(totalItems / limit),
-        totalItems,
-      },
     });
   } catch (error) {
     console.error("Lỗi trong getUserHistory:", error); // Log lỗi để debug

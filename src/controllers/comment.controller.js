@@ -62,23 +62,21 @@ const addComment = async (req, res) => {
 };
 
 // Thêm hàm xử lý reply comment
-const io = require("../index"); // Import `io` từ server
-
 const replyComment = async (req, res) => {
   const { parent_id, content, exercise_id } = req.body;
-  const user_id = req.user.id; // Lấy user_id từ middleware auth
+  const user_id = req.user.id; // Từ middleware auth
 
   try {
     // Kiểm tra comment gốc tồn tại
     const parentComment = await Comment.findOne({
       where: { id: parent_id },
-      include: [{ model: User, attributes: ["id", "name"] }],
+      include: [{ model: User, attributes: ['id', 'name'] }]
     });
 
     if (!parentComment) {
       return res.status(404).json({
         success: false,
-        message: "Comment gốc không tồn tại",
+        message: "Comment gốc không tồn tại"
       });
     }
 
@@ -90,39 +88,42 @@ const replyComment = async (req, res) => {
       content,
       created_at: new Date(),
     });
-
+    
     const replier = await User.findByPk(user_id, {
-      attributes: ["name"],
+      attributes: ['name'],
     });
-
-    // Lưu thông báo vào cơ sở dữ liệu
+    
     await Notification.create({
       user_id: parentComment.User.id,
       exercise_id,
       content: `${replier.name} đã trả lời bình luận của bạn`,
-      notificationType: "comment",
+      notificationType: 'comment',
       created_at: new Date(),
     });
-
-    // Gửi thông báo qua WebSocket
-    if (parentComment.User.id !== user_id) {
-      io.to(parentComment.User.id).emit("receiveNotification", {
-        type: "comment_reply",
-        content: `${replier.name} đã trả lời bình luận của bạn`,
-        exercise_id,
-        comment_id: reply.id,
-      });
+    // Gửi push notification
+    if (parentComment.User.id !== user_id) { // Không gửi nếu tự reply chính mình
+      await sendPushNotification(
+        parentComment.User.id,
+        'Có người trả lời bình luận',
+        `${replier.name} đã trả lời bình luận của bạn`,
+        {
+          type: 'comment_reply',
+          exercise_id,
+          comment_id: reply.id
+        }
+      );
     }
 
     res.status(201).json({
       success: true,
-      data: reply,
+      data: reply
     });
+
   } catch (error) {
     console.error("Lỗi khi reply comment:", error);
     res.status(500).json({
       success: false,
-      message: "Lỗi server",
+      message: "Lỗi server"
     });
   }
 };
