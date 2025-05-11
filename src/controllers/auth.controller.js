@@ -260,6 +260,7 @@ const getProfile = async (req, res) => {
     });
   }
 };
+
 const updateProfile = async (req, res) => {
   try {
     const userId = req.user.id;
