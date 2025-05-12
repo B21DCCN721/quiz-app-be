@@ -18,7 +18,7 @@ const getAllExercises = async (req, res) => {
       include: [
         {
           model: User,
-          attributes: ["name", "email"], // Only include teacher's name and email
+          attributes: ["id" ,"name", "email"], // Only include teacher's name and email
         },
       ],
       attributes: [
@@ -62,7 +62,7 @@ const getExerciseDetail = async (req, res) => {
     const includeArray = [
       {
         model: User,
-        attributes: ["name", "email"],
+        attributes: ["id" ,"name", "email"],  
       },
     ];
 
