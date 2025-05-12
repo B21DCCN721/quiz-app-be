@@ -187,95 +187,64 @@ const createMultipleChoiceExercise = async (req, res) => {
   }
 };
 
-const createCountingExercise = async (req, res) => {
-  console.log('Creating couting exercise...');
-  console.log('User role:', req.user.role);
-  console.log('Request body:', req.body);
+const createImageBasedExercise = async (req, res, exercise_type, questionHandler) => {
+  console.log(`Creating exercise type ${exercise_type}...`);
   let transaction;
+
   try {
-    // 1. Kiểm tra quyền teacher
     if (req.user.role !== 'teacher') {
-      return res.status(403).json({ 
-        code: 0,
-        message: 'Chỉ giáo viên được tạo bài tập' 
-      });
+      return res.status(403).json({ code: 0, message: 'Chỉ giáo viên được tạo bài tập' });
     }
 
-    // 2. Validate input
     if (!req.files || req.files.length === 0) {
-      return res.status(400).json({ 
-        code: 0, 
-        message: 'Vui lòng tải lên ít nhất một ảnh' 
-      });
+      return res.status(400).json({ code: 0, message: 'Vui lòng tải lên ít nhất một ảnh' });
     }
 
-    const files = req.files; // Mảng chứa các file đã upload
-    console.log('Files uploaded:', files.map(f => f.originalname));
-
-    const data = JSON.parse(req.body.data); // Parse JSON từ field 'data'
-    console.log('Exercise data:', data);
+    const files = req.files;
+    const data = JSON.parse(req.body.data);
     
     if (!data.questions || data.questions.length === 0) {
-      return res.status(400).json({ 
-        code: 0, 
-        message: 'Danh sách câu hỏi không được trống' 
-      });
+      return res.status(400).json({ code: 0, message: 'Danh sách câu hỏi không được trống' });
     }
 
-    // 3. Bắt đầu transaction
     transaction = await sequelize.transaction();
 
-    // 4. Tạo bài tập chung
     const exercise = await Exercise.create({
-      exercise_type: 2, // Loại Counting
+      exercise_type,
       grade: data.grade,
       user_id: req.user.id,
       title: data.title,
       description: data.description
     }, { transaction });
 
-    // 5. Xử lý từng câu hỏi và ảnh tương ứng
     for (let i = 0; i < data.questions.length; i++) {
       const questionData = data.questions[i];
-      const image = req.files[i];
+      const image = files[i];
 
-      // Upload ảnh lên Cloudinary
       const cloudinaryResult = await cloudinary.uploader.upload(image.path, {
-        folder: 'counting_exercises',
-        public_id: `counting_${exercise.id}_${Date.now()}`
+        folder: exercise_type === 2 ? 'counting_exercises' : 'color_exercises',
+        public_id: `${exercise_type}_${exercise.id}_${Date.now()}`
       });
 
-      // Tạo câu hỏi đếm
-      const question = await CountingQuestion.create({
-        exercise_id: exercise.id,
-        image_url: cloudinaryResult.secure_url,
-        public_id: cloudinaryResult.public_id
-      }, { transaction });
-
-      // Tạo các đáp án đếm
-      for (const object of questionData.objects) {
-        await CountingAnswer.create({
-          question_id: question.id,
-          object_name: object.object_name,
-          correct_count: object.correct_count
-        }, { transaction });
-      }
+      await questionHandler({
+        exerciseId: exercise.id,
+        questionData,
+        imageUrl: cloudinaryResult.secure_url,
+        publicId: cloudinaryResult.public_id,
+        transaction
+      });
     }
 
-    // 6. Commit transaction nếu thành công
     await transaction.commit();
 
     res.status(201).json({
       code: 1,
-      message: 'Tạo bài tập đếm thành công',
+      message: `Tạo bài tập ${exercise_type === 2 ? 'đếm' : 'màu'} thành công`,
       exercise
     });
 
   } catch (error) {
-    // 7. Rollback nếu có lỗi
     if (transaction) await transaction.rollback();
-
-    // 8. Xóa ảnh đã upload trên Cloudinary (nếu có)
     if (req.files) {
       for (const file of req.files) {
         if (file.public_id) {
@@ -284,8 +253,7 @@ const createCountingExercise = async (req, res) => {
       }
     }
 
-    // 9. Trả về lỗi chi tiết
-    console.error('Error creating counting exercise:', error);
+    console.error('Error creating exercise:', error);
     res.status(500).json({
       code: 0,
       message: 'Lỗi server',
@@ -293,112 +261,41 @@ const createCountingExercise = async (req, res) => {
       details: process.env.NODE_ENV === 'development' ? error.stack : undefined
     });
   }
+};
+
+const createCountingExercise = async (req, res) => {
+  await createImageBasedExercise(req, res, 2, async ({ exerciseId, questionData, imageUrl, publicId, transaction }) => {
+    const question = await CountingQuestion.create({
+      exercise_id: exerciseId,
+      question_text: questionData.question_text,
+      image_url: imageUrl,
+      public_id: publicId
+    }, { transaction });
+
+    await CountingAnswer.create({
+      question_id: question.id,
+      object_name: questionData.object_name,
+      correct_count: questionData.correct_count
+    }, { transaction });
+  });
 };
 
 const createColorExercise = async (req, res) => {
-  console.log('Creating color exercise...');
-  console.log('User role:', req.user.role);
-  console.log('Request body:', req.body);
-  let transaction;
-
-  try {
-    // 1. Kiểm tra quyền teacher
-    if (req.user.role !== 'teacher') {
-      return res.status(403).json({ 
-        code: 0,
-        message: 'Chỉ giáo viên được tạo bài tập' 
-      });
-    }
-
-    // 2. Validate input
-    if (!req.files || req.files.length === 0) {
-      return res.status(400).json({ 
-        code: 0, 
-        message: 'Vui lòng tải lên ít nhất một ảnh' 
-      });
-    }
-    const files = req.files; // Mảng chứa các file đã upload
-    console.log('Files uploaded:', files.map(f => f.originalname));
-
-    const data = JSON.parse(req.body.data); // Parse JSON từ field 'data'
-    console.log('Exercise data:', data);
-
-    if (!data.questions || data.questions.length === 0) {
-      return res.status(400).json({ 
-        code: 0, 
-        message: 'Danh sách câu hỏi không được trống' 
-      });
-    }
-
-    // 3. Bắt đầu transaction
-    transaction = await sequelize.transaction();
-
-    // 4. Tạo bài tập chung
-    const exercise = await Exercise.create({
-      exercise_type: 3, // Loại Color
-      grade: data.grade,
-      user_id: req.user.id,
-      title: data.title,
-      description: data.description
+  await createImageBasedExercise(req, res, 3, async ({ exerciseId, questionData, imageUrl, publicId, transaction }) => {
+    const question = await ColorQuestion.create({
+      exercise_id: exerciseId,
+      question_text: questionData.question_text,
+      image_url: imageUrl,
+      public_id: publicId
     }, { transaction });
 
-    // 5. Xử lý từng câu hỏi và ảnh tương ứng
-    for (let i = 0; i < data.questions.length; i++) {
-      const questionData = data.questions[i];
-      const image = req.files[i];
-
-      // Upload ảnh lên Cloudinary
-      const cloudinaryResult = await cloudinary.uploader.upload(image.path, {
-        folder: 'color_exercises',
-        public_id: `color_${exercise.id}_${Date.now()}`
-      });
-
-      // Tạo câu hỏi màu
-      const question = await ColorQuestion.create({
-        exercise_id: exercise.id,
-        image_url: cloudinaryResult.secure_url,
-        public_id: cloudinaryResult.public_id
-      }, { transaction });
-
-      // Tạo đáp án màu
-      await ColorAnswer.create({
-        question_id: question.id,
-        correct_position: questionData.correct_position
-      }, { transaction });
-    }
-
-    // 6. Commit transaction
-    await transaction.commit();
-
-    res.status(201).json({
-      code: 1,
-      message: 'Tạo bài tập màu thành công',
-      exercise
-    });
-
-  } catch (error) {
-    // 7. Rollback nếu có lỗi
-    if (transaction) await transaction.rollback();
-
-    // 8. Xóa ảnh đã upload
-    if (req.files) {
-      for (const file of req.files) {
-        if (file.public_id) {
-          await cloudinary.uploader.destroy(file.public_id);
-        }
-      }
-    }
-
-    // 9. Trả về lỗi
-    console.error('Error creating color exercise:', error);
-    res.status(500).json({
-      code: 0,
-      message: 'Lỗi server',
-      error: error.message,
-      details: process.env.NODE_ENV === 'development' ? error.stack : undefined
-    });
-  }
+    await ColorAnswer.create({
+      question_id: question.id,
+      correct_position: questionData.correct_position
+    }, { transaction });
+  });
 };
+
 
 const deleteExercise = async (req, res) => {
   try {
@@ -440,11 +337,183 @@ const deleteExercise = async (req, res) => {
   }
 };
 
+const editMultipleChoiceExercise = async (req, res) => {
+  try {
+    const exerciseId = req.params.id;
+    const { grade, title, description, questions } = req.body;
+
+    if (req.user.role !== 'teacher') {
+      return res.status(403).json({ code: 0, message: 'Không có quyền chỉnh sửa bài tập' });
+    }
+
+    const exercise = await Exercise.findByPk(exerciseId, {
+      include: [MultipleChoiceQuestion]
+    });
+
+    if (!exercise || exercise.exercise_type !== 1) {
+      return res.status(404).json({ code: 0, message: 'Bài tập trắc nghiệm không tồn tại' });
+    }
+
+    await exercise.update({ grade, title, description });
+
+    // Xóa câu hỏi và đáp án cũ
+    for (const question of exercise.MultipleChoiceQuestions) {
+      await MultipleChoiceAnswer.destroy({ where: { question_id: question.id } });
+      await question.destroy();
+    }
+
+    // Tạo lại câu hỏi và đáp án mới
+    for (const questionData of questions) {
+      const question = await MultipleChoiceQuestion.create({
+        exercise_id: exercise.id,
+        question: questionData.question
+      });
+
+      for (const answerData of questionData.answers) {
+        await MultipleChoiceAnswer.create({
+          question_id: question.id,
+          answer_text: answerData.text,
+          is_correct: answerData.is_correct
+        });
+      }
+    }
+
+    res.json({ code: 1, message: 'Cập nhật bài tập trắc nghiệm thành công', exercise });
+  } catch (error) {
+    res.status(500).json({ code: 0, message: 'Lỗi server', error: error.message });
+  }
+};
+
+const editImageBasedExercise = async (req, res, exercise_type, questionHandler) => {
+  let transaction;
+  try {
+    const exerciseId = req.params.id;
+
+    if (req.user.role !== 'teacher') {
+      return res.status(403).json({ code: 0, message: 'Không có quyền chỉnh sửa bài tập' });
+    }
+
+    const exercise = await Exercise.findByPk(exerciseId, {
+      include: exercise_type === 2 ? [CountingQuestion] : [ColorQuestion]
+    });
+
+    if (!exercise || exercise.exercise_type !== exercise_type) {
+      return res.status(404).json({ code: 0, message: 'Bài tập không tồn tại' });
+    }
+
+    if (!req.files || req.files.length === 0) {
+      return res.status(400).json({ code: 0, message: 'Vui lòng tải lại ảnh cho mỗi câu hỏi' });
+    }
+
+    const files = req.files;
+    const data = JSON.parse(req.body.data);
+
+    if (!data.questions || data.questions.length === 0) {
+      return res.status(400).json({ code: 0, message: 'Danh sách câu hỏi không được để trống' });
+    }
+
+    transaction = await sequelize.transaction();
+
+    await exercise.update({
+      grade: data.grade,
+      title: data.title,
+      description: data.description
+    }, { transaction });
+
+    // Xóa ảnh cũ trên cloudinary
+    const oldQuestions = exercise_type === 2 ? exercise.CountingQuestions : exercise.ColorQuestions;
+    for (const question of oldQuestions) {
+      await cloudinary.uploader.destroy(question.public_id);
+    }
+
+    // Xóa câu hỏi và đáp án cũ
+    await (exercise_type === 2 ? CountingAnswer : ColorAnswer).destroy({
+      where: {
+        question_id: oldQuestions.map(q => q.id)
+      },
+      transaction
+    });
+    await (exercise_type === 2 ? CountingQuestion : ColorQuestion).destroy({
+      where: {
+        exercise_id: exercise.id
+      },
+      transaction
+    });
+
+    // Tạo lại các câu hỏi và ảnh
+    for (let i = 0; i < data.questions.length; i++) {
+      const questionData = data.questions[i];
+      const image = files[i];
+
+      const cloudinaryResult = await cloudinary.uploader.upload(image.path, {
+        folder: exercise_type === 2 ? 'counting_exercises' : 'color_exercises',
+        public_id: `${exercise_type}_${exercise.id}_${Date.now()}_${i}`
+      });
+
+      await questionHandler({
+        exerciseId: exercise.id,
+        questionData,
+        imageUrl: cloudinaryResult.secure_url,
+        publicId: cloudinaryResult.public_id,
+        transaction
+      });
+    }
+
+    await transaction.commit();
+
+    res.json({
+      code: 1,
+      message: `Cập nhật bài tập ${exercise_type === 2 ? 'đếm' : 'màu'} thành công`,
+      exercise
+    });
+  } catch (error) {
+    if (transaction) await transaction.rollback();
+    res.status(500).json({ code: 0, message: 'Lỗi server', error: error.message });
+  }
+};
+
+const editCountingExercise = async (req, res) => {
+  await editImageBasedExercise(req, res, 2, async ({ exerciseId, questionData, imageUrl, publicId, transaction }) => {
+    const question = await CountingQuestion.create({
+      exercise_id: exerciseId,
+      question_text: questionData.question_text,
+      image_url: imageUrl,
+      public_id: publicId
+    }, { transaction });
+
+    await CountingAnswer.create({
+      question_id: question.id,
+      object_name: questionData.object_name,
+      correct_count: questionData.correct_count
+    }, { transaction });
+  });
+};
+
+const editColorExercise = async (req, res) => {
+  await editImageBasedExercise(req, res, 3, async ({ exerciseId, questionData, imageUrl, publicId, transaction }) => {
+    const question = await ColorQuestion.create({
+      exercise_id: exerciseId,
+      question_text: questionData.question_text,
+      image_url: imageUrl,
+      public_id: publicId
+    }, { transaction });
+
+    await ColorAnswer.create({
+      question_id: question.id,
+      correct_position: questionData.correct_position
+    }, { transaction });
+  });
+};
+
+
 module.exports = {
   getAllExercises,
   getExerciseDetail,
   createMultipleChoiceExercise,
+  editMultipleChoiceExercise,
   createCountingExercise,
+  editCountingExercise,
   createColorExercise,
+  editColorExercise,
   deleteExercise,
 };

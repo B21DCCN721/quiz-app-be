@@ -28,7 +28,7 @@ const ColorQuestion = sequelize.define('ColorQuestion', {
   question_text: {
     type: DataTypes.STRING,
     allowNull: false
-  }
+  },
 }, {
   tableName: 'color_questions',
   timestamps: false
