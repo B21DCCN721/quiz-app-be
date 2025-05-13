@@ -69,7 +69,7 @@ const submitMultipleChoiceExercise = async (req, res) => {
     const studentId = req.user.id;
     const studentGrade = req.user.grade; 
 
-    // Verify exercise exists and is multiple choice type
+    // Lấy ra bài thi gồm câu hỏi và đáp án đúng
     const exercise = await Exercise.findOne({
       where: {
         id: exerciseId,
@@ -95,7 +95,7 @@ const submitMultipleChoiceExercise = async (req, res) => {
       });
     }
 
-    // Get previous submissions for this exercise
+    // lấy ra các lần nộp bài trước đó
     const previousSubmissions = await Submission.findAll({
       where: {
         student_id: studentId,
@@ -119,12 +119,12 @@ const submitMultipleChoiceExercise = async (req, res) => {
       ],
     });
 
-    // Track previously correct answers
+    // lấy ra các câu hỏi đã đúng trước đó của học sinh
     const previouslyCorrectQuestionIds = new Set();
     previousSubmissions.forEach((submission) => {
       submission.StudentAnswerMultipleChoices.forEach((answer) => {
         if (
-          parseInt(answer.selected_answer) === // Convert string to int
+          parseInt(answer.selected_answer) ===
           answer.MultipleChoiceQuestion.MultipleChoiceAnswers[0].id
         ) {
           previouslyCorrectQuestionIds.add(answer.question_id);
@@ -132,7 +132,7 @@ const submitMultipleChoiceExercise = async (req, res) => {
       });
     });
 
-    // Calculate score
+    // tính điểmđiểm
     let correctAnswers = 0;
     let newCorrectAnswers = 0;
     const totalQuestions = exercise.MultipleChoiceQuestions.length;
@@ -144,7 +144,7 @@ const submitMultipleChoiceExercise = async (req, res) => {
       });
     }
 
-    // Create submission record
+    // tạo submission record
     const submission = await Submission.create(
       {
         student_id: studentId,
@@ -154,24 +154,24 @@ const submitMultipleChoiceExercise = async (req, res) => {
       { transaction }
     );
 
-    // Process each answer
+    // duyệt các câu trả lời
     for (const answer of answers) {
       const question = exercise.MultipleChoiceQuestions.find(
         (q) => q.id === answer.questionId
       );
 
       if (question) {
-        // Save student's answer as integer
+        // lưu câu trả lời
         await StudentAnswerMultipleChoice.create(
           {
             submission_id: submission.id,
             question_id: answer.questionId,
-            selected_answer: parseInt(answer.selectedAnswer), // Convert to integer
+            selected_answer: parseInt(answer.selectedAnswer),
           },
           { transaction }
         );
 
-        // Check if answer is correct using integer comparison
+        // Check câu trả lời đúng
         const correctAnswer = question.MultipleChoiceAnswers[0];
         const isCorrect = correctAnswer && 
                          parseInt(answer.selectedAnswer) === correctAnswer.id;
@@ -186,19 +186,19 @@ const submitMultipleChoiceExercise = async (req, res) => {
       }
     }
 
-    // Calculate submission score (scale to 100)
+    // tính điểm bài nộp
     const submissionScore = Math.round((correctAnswers / totalQuestions) * 100);
 
-    // Calculate points to add to total score
+    // tính điểm cộng thêmthêm
     let pointsToAdd = 0;
     if(studentGrade === exercise.grade) {
       pointsToAdd = Math.round((newCorrectAnswers / totalQuestions) * 100); 
     }
 
-    // Update submission score
+    // cập nhập điểm bài nộp
     await submission.update({ score: submissionScore }, { transaction });
 
-    // Update student's total score only for new correct answers
+    // cập nhật điểm học sinh
     const student = await Student.findOne({
       where: { user_id: studentId },
     });

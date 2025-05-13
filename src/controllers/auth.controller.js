@@ -49,6 +49,10 @@ const register = async (req, res) => {
         email: newUser.email,
         name: newUser.name,
         role: newUser.role,
+        ...(newUser.role === "student" && {
+          grade: grade,
+          score: 0,
+        }),
       },
     });
   } catch (error) {
@@ -99,8 +103,8 @@ const login = async (req, res) => {
         role: user.role,
         ...(user.Student && { grade: user.Student.grade }),
       },
-      process.env.JWT_SECRET,
-      { expiresIn: process.env.JWT_EXPIRES_IN }
+      process.env.JWT_SECRET
+      // { expiresIn: process.env.JWT_EXPIRES_IN }
     );
 
     res.json({
@@ -131,7 +135,7 @@ const login = async (req, res) => {
 const changePassword = async (req, res) => {
   try {
     const { oldPassword, newPassword } = req.body;
-    const userId = req.user.id; // From auth middleware
+    const userId = req.user.id;
 
     // Find user
     const user = await User.findByPk(userId);
@@ -214,7 +218,7 @@ const changePasswordAdmin = async (req, res) => {
       error: error.message,
     });
   }
-}
+};
 
 const getProfile = async (req, res) => {
   try {
@@ -410,7 +414,7 @@ const resetPassword = async (req, res) => {
     if (!user) {
       return res
         .status(404)
-        .json({ code: 0, message: "Không tìm thấy người dùng" });
+        .json({ code: 0, message: "Email không tồn tại trong hệ thống" });
     }
 
     const hashedPassword = await bcrypt.hash(newPassword, 10);
