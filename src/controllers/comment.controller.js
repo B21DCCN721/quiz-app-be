@@ -1,4 +1,4 @@
-const { Comment, User, Notification } = require("../models");
+const { Comment, User, Notification, Exercise } = require("../models");
 const { sendPushNotification } = require("../services/notification.service");
 
 // Hàm lấy danh sách comment
@@ -40,6 +40,17 @@ const addComment = async (req, res) => {
     });
   }
 
+  const teacherId = await Exercise.findOne({
+    where: { id: exercise_id },
+    attributes: ["user_id"],
+  });
+
+  console.log
+
+  const replier = await User.findByPk(user_id, {
+    attributes: ["name"],
+  });
+
   try {
     const newComment = await Comment.create({
       user_id,
@@ -47,6 +58,28 @@ const addComment = async (req, res) => {
       content,
       created_at: new Date(),
     });
+
+    if (teacherId.user_id !== user_id) {
+      await Notification.create({
+        user_id: teacherId.user_id,
+        exercise_id,
+        content: `${replier.name} đã bình luận về bài tập của bạn`,
+        notificationType: "comment",
+        created_at: new Date(),
+      });
+
+      // Gửi push notification
+      await sendPushNotification(
+        teacherId.user_id,
+        "Có người bình luận về bài tập của bạn",
+        `${replier.name} đã bình luận về bài tập của bạn`,
+        {
+          type: "comment",
+          exercise_id,
+          comment_id: newComment.id,
+        }
+      );
+    }
 
     res.status(201).json({
       success: true,
@@ -93,15 +126,16 @@ const replyComment = async (req, res) => {
       attributes: ['name'],
     });
     
-    await Notification.create({
-      user_id: parentComment.User.id,
-      exercise_id,
-      content: `${replier.name} đã trả lời bình luận của bạn`,
-      notificationType: 'comment',
-      created_at: new Date(),
-    });
-    // Gửi push notification
-    if (parentComment.User.id !== user_id) { // Không gửi nếu tự reply chính mình
+    if (parentComment.User.id !== user_id) {
+      await Notification.create({
+        user_id: parentComment.User.id,
+        exercise_id,
+        content: `${replier.name} đã trả lời bình luận của bạn`,
+        notificationType: 'comment',
+        created_at: new Date(),
+      });
+      // Gửi push notification
+      // Không gửi nếu tự reply chính mình
       await sendPushNotification(
         parentComment.User.id,
         'Có người trả lời bình luận',
